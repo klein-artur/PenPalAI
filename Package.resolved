@@ -1,0 +1,14 @@
+{
+  "pins" : [
+    {
+      "identity" : "swiftgpt",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/klein-artur/SwiftGPT",
+      "state" : {
+        "revision" : "c04a8780e01e4ffd200c4c2f93dd800e2d204c84",
+        "version" : "1.0.0"
+      }
+    }
+  ],
+  "version" : 2
+}

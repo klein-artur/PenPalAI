@@ -1,6 +1,9 @@
-public struct PenPalAI {
-    public private(set) var text = "Hello, World!"
+import GPTConnector
 
-    public init() {
+public struct PenPalAI {
+    let apiKey: String
+    
+    public init(pal: String, apiKey: String) {
+        self.apiKey = apiKey
     }
 }
