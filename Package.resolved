@@ -1,12 +1,21 @@
 {
   "pins" : [
     {
+      "identity" : "swiftdose",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/klein-artur/SwiftDose",
+      "state" : {
+        "revision" : "02ba6077177548c9c1f897cd01fb0ecee833fef6",
+        "version" : "1.0.3"
+      }
+    },
+    {
       "identity" : "swiftgpt",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/klein-artur/SwiftGPT",
       "state" : {
-        "revision" : "c04a8780e01e4ffd200c4c2f93dd800e2d204c84",
-        "version" : "1.0.0"
+        "revision" : "36956e19ff0e6846bfaa4f7071c7456afe07eb99",
+        "version" : "1.0.5"
       }
     }
   ],
