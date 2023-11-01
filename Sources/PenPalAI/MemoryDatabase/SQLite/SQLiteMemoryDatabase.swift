@@ -38,7 +38,9 @@ class SQLiteMemoryDatabase: MemoryDatabase {
         CREATE TABLE IF NOT EXISTS Memory (
             id TEXT PRIMARY KEY,
             snipped TEXT,
-            embedding BLOB
+            embedding BLOB,
+            isKeyKnowledge INTEGER,
+            creationDate TIMESTAMP
         );
         """
         
@@ -50,7 +52,7 @@ class SQLiteMemoryDatabase: MemoryDatabase {
     func save(memory: Memory) async throws {
         guard !filePathResolved.isEmpty else { throw MemoryDatabaseError.noFilePath }
         
-        let insertQuery = "INSERT INTO Memory (id, snipped, embedding) VALUES (?, ?, ?);"
+        let insertQuery = "INSERT INTO Memory (id, snipped, embedding, isKeyKnowledge, creationDate) VALUES (?, ?, ?, ?, ?);"
         var stmt: OpaquePointer?
         
         defer {
@@ -66,6 +68,9 @@ class SQLiteMemoryDatabase: MemoryDatabase {
         
         let data = try NSKeyedArchiver.archivedData(withRootObject: memory.embedding, requiringSecureCoding: false)
                 _ = sqlite3.bind_blob(stmt, 3, (data as NSData).bytes, Int32(data.count), nil)
+        
+        _ = sqlite3.bind_int64(stmt, 4, Int64(memory.isKeyKnowledge ? 1 : 0))
+        _ = sqlite3.bind_int64(stmt, 5, Int64(memory.creationDate.timeIntervalSince1970))
         
         if sqlite3.step(stmt) != SQLITE_DONE {
             throw NSError(domain: "SQLite", code: 4, userInfo: nil)
@@ -93,14 +98,16 @@ class SQLiteMemoryDatabase: MemoryDatabase {
             let id = UUID(uuidString: idString)!
             
             let snipped = String(cString: sqlite3.column_text(stmt, 1))
+            let isKeyKnowledge = sqlite3.column_int64(stmt, 3) == 1
+            let creationDate = Date(timeIntervalSince1970: TimeInterval(sqlite3.column_int64(stmt, 4)))
             
-            let blob = sqlite3_column_blob(stmt, 2)
-            let blobLength = sqlite3_column_bytes(stmt, 2)
+            let blob = sqlite3.column_blob(stmt, 2)
+            let blobLength = sqlite3.column_bytes(stmt, 2)
             let data = Data(bytes: blob!, count: Int(blobLength))
             
             let embedding: [Double] = try NSKeyedUnarchiver.unarchiveTopLevelObjectWithData(data) as! [Double]
             
-            return Memory(id: id, snipped: snipped, embedding: embedding)
+            return Memory(id: id, snipped: snipped, embedding: embedding, isKeyKnowledge: isKeyKnowledge, creationDate: creationDate)
         } else {
             return nil
         }
@@ -127,17 +134,19 @@ class SQLiteMemoryDatabase: MemoryDatabase {
             let id = UUID(uuidString: idString)!
             
             let snipped = String(cString: sqlite3.column_text(stmt, 1))
+            let isKeyKnowledge = sqlite3.column_int64(stmt, 3) == 1
+            let creationDate = Date(timeIntervalSince1970: TimeInterval(sqlite3.column_int64(stmt, 4)))
             
-            let blob = sqlite3_column_blob(stmt, 2)
-            let blobLength = sqlite3_column_bytes(stmt, 2)
+            let blob = sqlite3.column_blob(stmt, 2)
+            let blobLength = sqlite3.column_bytes(stmt, 2)
             let data = Data(bytes: blob!, count: Int(blobLength))
             
             let existingEmbedding: [Double] = try NSKeyedUnarchiver.unarchiveTopLevelObjectWithData(data) as! [Double]
             
-            let similarity = calculateCosineSimilarity(embedding, existingEmbedding) // Assume this function exists
+            let similarity = calculateCosineSimilarity(embedding, existingEmbedding)
             
             if similarity >= threshold {
-                memories.append(Memory(id: id, snipped: snipped, embedding: existingEmbedding))
+                memories.append(Memory(id: id, snipped: snipped, embedding: existingEmbedding, isKeyKnowledge: isKeyKnowledge, creationDate: creationDate))
             }
         }
         
@@ -172,9 +181,46 @@ class SQLiteMemoryDatabase: MemoryDatabase {
         }
 
         // Finally, insert a new Memory object with the new snipped but same ID and embedding.
-        let newMemory = Memory(id: existingMemory.id, snipped: newSnipped, embedding: embedding)
+        let newMemory = Memory(id: existingMemory.id, snipped: newSnipped, embedding: embedding, isKeyKnowledge: existingMemory.isKeyKnowledge, creationDate: .now)
         try await save(memory: newMemory)
     }
+    
+    func getKeyMemories(number: Int) async throws -> [Memory] {
+        guard !filePathResolved.isEmpty else { throw MemoryDatabaseError.noFilePath }
+        
+        let selectQuery = "SELECT * FROM Memory WHERE isKeyKnowledge = 1 ORDER BY creationDate DESC LIMIT \(number);"
+        var stmt: OpaquePointer?
+        
+        var memories: [Memory] = []
+        
+        defer {
+            _ = sqlite3.finalize(stmt)
+        }
+        
+        if sqlite3.prepare_v2(db, selectQuery, -1, &stmt, nil) != SQLITE_OK {
+            throw NSError(domain: "SQLite", code: 6, userInfo: nil)
+        }
+        
+        while sqlite3.step(stmt) == SQLITE_ROW {
+            let idString = String(cString: sqlite3.column_text(stmt, 0))
+            let id = UUID(uuidString: idString)!
+            
+            let snipped = String(cString: sqlite3.column_text(stmt, 1))
+            let isKeyKnowledge = sqlite3.column_int64(stmt, 3) == 1
+            let creationDate = Date(timeIntervalSince1970: TimeInterval(sqlite3.column_int64(stmt, 4)))
+            
+            let blob = sqlite3.column_blob(stmt, 2)
+            let blobLength = sqlite3.column_bytes(stmt, 2)
+            let data = Data(bytes: blob!, count: Int(blobLength))
+            
+            let existingEmbedding: [Double] = try NSKeyedUnarchiver.unarchiveTopLevelObjectWithData(data) as! [Double]
+            
+            memories.append(Memory(id: id, snipped: snipped, embedding: existingEmbedding, isKeyKnowledge: isKeyKnowledge, creationDate: creationDate))
+        }
+        
+        return memories
+    }
+
 
     
     private func calculateCosineSimilarity(_ vec1: [Double], _ vec2: [Double]) -> Double {

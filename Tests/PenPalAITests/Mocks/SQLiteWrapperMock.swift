@@ -21,6 +21,7 @@ class SQLiteWrapperMock: SQLiteWrapper {
     var columnDoubleReturns: [Double] = [0.0]
     var columnTextReturns: [String] = [""]
     var columnInt64Returns: [Int64] = [0]
+    var columnBlobReturns: [Data] = [Data()]
     
     private var openIndex = 0
     private var closeIndex = 0
@@ -31,6 +32,7 @@ class SQLiteWrapperMock: SQLiteWrapper {
     private var columnDoubleIndex = 0
     private var columnTextIndex = 0
     private var columnInt64Index = 0
+    private var columnBlobIndex = 0
     
     var executedSQL: [String] = []
     var boundText: [String] = []
@@ -117,6 +119,34 @@ class SQLiteWrapperMock: SQLiteWrapper {
     }
     
     func finalize(_ pStmt: OpaquePointer!) -> Int32 {
+        return SQLITE_OK
+    }
+    
+    func column_blob(_ pStmt: OpaquePointer!, _ iCol: Int32) -> UnsafeRawPointer! {
+        let value = columnBlobReturns[columnBlobIndex % columnBlobReturns.count]
+        columnBlobIndex += 1
+
+        let count = value.count
+        let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: count)
+        let bufferPointer = UnsafeMutableRawBufferPointer(start: buffer, count: count)
+        
+        // Convert Data to [UInt8] and get an UnsafeRawBufferPointer to its contents
+        value.withUnsafeBytes { rawBufferPointer in
+            bufferPointer.copyMemory(from: rawBufferPointer)
+        }
+
+        // Don't forget to deallocate this buffer when you're done with it!
+        allocatedBuffers.append(buffer)
+        return UnsafeRawPointer(buffer)
+    }
+    
+    func column_bytes(_ pStmt: OpaquePointer!, _ iCol: Int32) -> Int32 {
+        let value = columnBlobReturns[columnBlobIndex % columnBlobReturns.count]
+        return Int32(value.count)
+    }
+
+    func bind_int64(_ pStmt: OpaquePointer!, _ index: Int32, _ value: Int64) -> Int32 {
+        columnInt64Returns.append(value)
         return SQLITE_OK
     }
     

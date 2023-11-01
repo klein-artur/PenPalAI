@@ -56,7 +56,7 @@ class SQLiteMemoryDatabaseTests: XCTestCase {
     }
     
     func testSaveMemorySuccess() async throws {
-        let memory = Memory(id: UUID(), snipped: "testSnipped", embedding: [0.1, 0.2])
+        let memory = Memory(id: UUID(), snipped: "testSnipped", embedding: [0.1, 0.2], isKeyKnowledge: false, creationDate: .now)
         sut.filePath = "test.db"
         
         try await sut.save(memory: memory)
@@ -64,7 +64,7 @@ class SQLiteMemoryDatabaseTests: XCTestCase {
         // Validate that the query was executed
         XCTAssertTrue(
             mockSQLite.executedSQL.contains {
-                $0.contains("INSERT INTO Memory (id, snipped, embedding) VALUES (?, ?, ?);")
+                $0.contains("INSERT INTO Memory (id, snipped, embedding, isKeyKnowledge, creationDate) VALUES (?, ?, ?, ?, ?);")
             }
         )
     }
@@ -123,7 +123,7 @@ class SQLiteMemoryDatabaseTests: XCTestCase {
 //    }
 
     func testSaveMemoryFailsOnNoFilePath() async throws {
-        let memory = Memory(id: UUID(), snipped: "testSnipped", embedding: [0.1, 0.2])
+        let memory = Memory(id: UUID(), snipped: "testSnipped", embedding: [0.1, 0.2], isKeyKnowledge: false, creationDate: .now)
         
         do {
             try await sut.save(memory: memory)

@@ -15,6 +15,7 @@ class MemoryDatabaseMock: MemoryDatabase {
     var onSave: ((Memory) async throws -> Void)?
     var onFindSnipped: ((String) async throws -> Memory?)?
     var onFindEmbedding: (([Double], Double) async throws -> [Memory])?
+    var onGetKeyMemories: ((Int) async throws -> [Memory])?
     var onReplace: ((String, String, [Double]) async throws -> Void)?
     
     func save(memory: Memory) async throws {
@@ -31,5 +32,9 @@ class MemoryDatabaseMock: MemoryDatabase {
     
     func replace(snipped: String, newSnipped: String, embedding: [Double]) async throws {
         try await onReplace?(snipped, newSnipped, embedding)
+    }
+    
+    func getKeyMemories(number: Int) async throws -> [Memory] {
+        try await onGetKeyMemories?(number) ?? []
     }
 }

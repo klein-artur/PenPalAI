@@ -17,9 +17,12 @@ protocol SQLiteWrapper {
     func column_double(_ pStmt: OpaquePointer!, _ iCol: Int32) -> Double
     func column_text(_ pStmt: OpaquePointer!, _ iCol: Int32) -> UnsafePointer<UInt8>!
     func column_int64(_ pStmt: OpaquePointer!, _ iCol: Int32) -> sqlite3_int64
+    func column_blob(_ pStmt: OpaquePointer!, _ iCol: Int32) -> UnsafeRawPointer!
+    func column_bytes(_ pStmt: OpaquePointer!, _ iCol: Int32) -> Int32
     func bind_double(_ pStmt: OpaquePointer!, _ index: Int32, _ value: Double) -> Int32
     func bind_text(_ pStmt: OpaquePointer!, _ index: Int32, _ text: UnsafePointer<Int8>!, _ len: Int32, _ f: (@convention(c) (UnsafeMutableRawPointer?) -> Swift.Void)!) -> Int32
     func bind_blob(_ pStmt: OpaquePointer!, _ index: Int32, _ blob: UnsafeRawPointer!, _ len: Int32, _ f: (@convention(c) (UnsafeMutableRawPointer?) -> Swift.Void)!) -> Int32
+    func bind_int64(_ pStmt: OpaquePointer!, _ index: Int32, _ value: Int64) -> Int32
     func finalize(_ pStmt: OpaquePointer!) -> Int32
 }
 
@@ -52,6 +55,14 @@ struct RealSQLiteWrapper: SQLiteWrapper {
         return sqlite3_column_text(pStmt, iCol)
     }
     
+    func column_blob(_ pStmt: OpaquePointer!, _ iCol: Int32) -> UnsafeRawPointer! {
+        return sqlite3_column_blob(pStmt, iCol)
+    }
+    
+    func column_bytes(_ pStmt: OpaquePointer!, _ iCol: Int32) -> Int32 {
+        return sqlite3_column_bytes(pStmt, iCol)
+    }
+    
     func column_int64(_ pStmt: OpaquePointer!, _ iCol: Int32) -> sqlite3_int64 {
         return sqlite3_column_int64(pStmt, iCol)
     }
@@ -66,6 +77,10 @@ struct RealSQLiteWrapper: SQLiteWrapper {
     
     func bind_blob(_ pStmt: OpaquePointer!, _ index: Int32, _ blob: UnsafeRawPointer!, _ len: Int32, _ f: (@convention(c) (UnsafeMutableRawPointer?) -> Swift.Void)!) -> Int32 {
         return sqlite3_bind_blob(pStmt, index, blob, len, f)
+    }
+    
+    func bind_int64(_ pStmt: OpaquePointer!, _ index: Int32, _ value: Int64) -> Int32 {
+        return sqlite3_bind_int64(pStmt, index, value)
     }
     
     func finalize(_ pStmt: OpaquePointer!) -> Int32 {

@@ -11,6 +11,8 @@ struct Memory {
     let id: UUID
     let snipped: String
     let embedding: [Double]
+    let isKeyKnowledge: Bool
+    let creationDate: Date
 }
 
 enum MemoryDatabaseError: Error {
@@ -24,6 +26,12 @@ protocol MemoryDatabase {
     
     /// Saves a memory to the datasource.
     func save(memory: Memory) async throws
+    
+    /// Returns the given number of key memories sorted by date.
+    /// - Parameters:
+    /// - number: The number of memories to return.
+    /// - Returns: The memories.
+    func getKeyMemories(number: Int) async throws -> [Memory]
     
     /// Finds a memory by its snipped.
     /// - Parameters:

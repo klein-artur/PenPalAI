@@ -25,12 +25,20 @@ public class PenPalAI {
         memoryDatabase.filePath = pal
     }
     
-    public func send(message: String?) async throws -> String {
-        var chat = currentChat ?? createNewChat()
+    public func send(message: String) async throws -> String {
+        var chat = currentChat
         
-        if let message = message {
-            chat = chat.byAddingMessage(.user(message))
+        if chat == nil {
+            chat = try await createNewChat()
         }
+        
+        chat?.messages[0] = .system(Constants.System.systemMessage(keyMemories: try await memoryDatabase.getKeyMemories(number: 10)))
+        
+        guard var chat else {
+            throw PenPalError.chatGenerationFailed
+        }
+        
+        chat = chat.byAddingMessage(.user(message))
         
         guard let newChat = try await gptConnector.chat(context: chat, onFunctionCall: self.handleFunction(name:arguments:)).first else {
             throw PenPalError.chatGenerationFailed
@@ -69,13 +77,15 @@ public class PenPalAI {
     private func handleSaveMemory(arguments: String) async throws -> String {
         guard let jsonData = arguments.data(using: .utf8),
               let dictionary = try JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any],
-              let snipped = dictionary[Constants.System.Functions.SaveMemory.infoParameterName] as? String else {
+              let snipped = dictionary[Constants.System.Functions.SaveMemory.infoParameterName] as? String,
+              let isKeyMemory = dictionary[Constants.System.Functions.SaveMemory.isKeyParameterName] as? Bool
+        else {
             return "error"
         }
         
         let embeddings = try await embeddingsService.getEmbedding(for: snipped, apiKey: self.apiKey)
         
-        try await memoryDatabase.save(memory: Memory(id: UUID(), snipped: snipped, embedding: embeddings))
+        try await memoryDatabase.save(memory: Memory(id: UUID(), snipped: snipped, embedding: embeddings, isKeyKnowledge: isKeyMemory, creationDate: .now))
         
         return "done"
     }
@@ -97,9 +107,9 @@ public class PenPalAI {
     
     // MARK: - Private
     
-    private func createNewChat() -> Chat {
+    private func createNewChat() async throws -> Chat {
         Chat(
-            messages: [.system(Constants.System.systemMessage)],
+            messages: [.system("")],
             functions: [
                 .init(
                     name: Constants.System.Functions.GetMemory.name,
@@ -121,6 +131,12 @@ public class PenPalAI {
                             name: Constants.System.Functions.SaveMemory.infoParameterName,
                             type: .string,
                             description: Constants.System.Functions.SaveMemory.infoParameterDescription,
+                            required: true
+                        ),
+                        .init(
+                            name: Constants.System.Functions.SaveMemory.isKeyParameterName,
+                            type: .boolean,
+                            description: Constants.System.Functions.SaveMemory.isKeyParameterDescription,
                             required: true
                         )
                     ]

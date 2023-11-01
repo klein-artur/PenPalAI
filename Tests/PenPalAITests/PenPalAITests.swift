@@ -40,33 +40,21 @@ final class PenPalAITests: XCTestCase {
         XCTAssertEqual(memoryMock.filePath, "someFile.ppai")
     }
     
-    func testShouldCallChatWithSystemMessageWithoutUserMessage() async throws {
-        // given
-        let chatCallbackExpectation = expectation(description: "chatCallbackExpectation")
-        chatMock.chatCalledMock = { chat, onChoiceSelect, onFunctionCall in
-            
-            // then
-            XCTAssertEqual(chat.messages.first?.content, Constants.System.systemMessage)
-            XCTAssertEqual(chat.messages.count, 1)
-            
-            chatCallbackExpectation.fulfill()
-            
-            return [chat]
-        }
-        
-        // when
-        _ = try await sut.send(message: nil)
-        
-        // then
-        wait(for: [chatCallbackExpectation], timeout: 1)
-    }
-    
     func testShouldCallChatWithFirstUserMessage() async throws {
         // given
         let chatCallbackExpectation = expectation(description: "chatCallbackExpectation")
+        let keyMemories = [
+            Memory(id: UUID(), snipped: "This is a Test", embedding: [], isKeyKnowledge: true, creationDate: .now),
+            Memory(id: UUID(), snipped: "This is another Test", embedding: [], isKeyKnowledge: true, creationDate: .now)
+        ]
+        
+        memoryMock.onGetKeyMemories = { number in
+            return keyMemories
+        }
         chatMock.chatCalledMock = { chat, onChoiceSelect, onFunctionCall in
             
             // then
+            XCTAssertEqual(chat.messages[0].content, Constants.System.systemMessage(keyMemories: keyMemories))
             XCTAssertEqual(chat.messages[1].content, "Test message")
             
             chatCallbackExpectation.fulfill()
@@ -128,18 +116,18 @@ final class PenPalAITests: XCTestCase {
             if callNumber == 1 {
                 return [chat.byAddingMessage(.assistant("This is the assistant message", functionCall: nil))]
             } else if callNumber == 2 {
-                XCTAssertEqual(chat.messages[1].content, "This is the assistant message")
-                XCTAssertEqual(chat.messages[2].content, "Test message")
+                XCTAssertEqual(chat.messages[2].content, "This is the assistant message")
+                XCTAssertEqual(chat.messages[3].content, "Test message")
                 return [chat.byAddingMessage(.assistant("The other assistant message", functionCall: nil))]
             } else {
-                XCTAssertEqual(chat.messages[3].content, "The other assistant message")
-                XCTAssertEqual(chat.messages[4].content, "Test message")
+                XCTAssertEqual(chat.messages[4].content, "The other assistant message")
+                XCTAssertEqual(chat.messages[5].content, "Test message")
                 return [chat.byAddingMessage(.assistant("The last assistant message", functionCall: nil))]
             }
         }
         
         // when
-        let answer = try await sut.send(message: nil)
+        let answer = try await sut.send(message: "Test user message")
         let secondAnswer = try await sut.send(message: "Test message")
         let thirdAnswer = try await sut.send(message: "Test message")
         
@@ -161,7 +149,7 @@ final class PenPalAITests: XCTestCase {
             XCTAssertEqual(threshold, 0.85)
             XCTAssertEqual(embedding, [1.1, 2.2, 3.3])
             memoryCallExpectation.fulfill()
-            return [Memory(id: UUID(), snipped: "Test memory", embedding: []), Memory(id: UUID(), snipped: "Test memory 2", embedding: [])]
+            return [Memory(id: UUID(), snipped: "Test memory", embedding: [], isKeyKnowledge: false, creationDate: .now), Memory(id: UUID(), snipped: "Test memory 2", embedding: [], isKeyKnowledge: false, creationDate: .now)]
         }
         chatMock.chatCalledMock = { chat, _, onFunctionCall in
             let functionResult = try await onFunctionCall(Constants.System.Functions.GetMemory.name, "{\"\(Constants.System.Functions.GetMemory.searchTextParameterName)\": \"Test memory\"}")
@@ -195,7 +183,7 @@ final class PenPalAITests: XCTestCase {
             memoryCallExpectation.fulfill()
         }
         chatMock.chatCalledMock = { chat, _, onFunctionCall in
-            let functionResult = try await onFunctionCall(Constants.System.Functions.SaveMemory.name, "{\"\(Constants.System.Functions.SaveMemory.infoParameterName)\": \"Test memory\"}")
+            let functionResult = try await onFunctionCall(Constants.System.Functions.SaveMemory.name, "{\"\(Constants.System.Functions.SaveMemory.infoParameterName)\": \"Test memory\", \"\(Constants.System.Functions.SaveMemory.isKeyParameterName)\": false                                                          }")
             
             XCTAssertEqual(functionResult, "done")
             
