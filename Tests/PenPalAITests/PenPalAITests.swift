@@ -146,7 +146,7 @@ final class PenPalAITests: XCTestCase {
         let chackCallExpectation = expectation(description: "chackCallExpectation")
         let embeddingCallExpectation = expectation(description: "embeddingCallExpectation")
         memoryMock.onFindEmbedding = { embedding, threshold in
-            XCTAssertEqual(threshold, 0.85)
+            XCTAssertEqual(threshold, Constants.System.embeddingThreshold)
             XCTAssertEqual(embedding, [1.1, 2.2, 3.3])
             memoryCallExpectation.fulfill()
             return [Memory(id: UUID(), snipped: "Test memory", embedding: [], isKeyKnowledge: false, creationDate: .now), Memory(id: UUID(), snipped: "Test memory 2", embedding: [], isKeyKnowledge: false, creationDate: .now)]
@@ -245,7 +245,7 @@ final class PenPalAITests: XCTestCase {
         let memoryCallExpectation = expectation(description: "memoryCallExpectation")
         let chackCallExpectation = expectation(description: "chackCallExpectation")
         memoryMock.onFindEmbedding = { _, threshold in
-            XCTAssertEqual(threshold, 0.85)
+            XCTAssertEqual(threshold, Constants.System.embeddingThreshold)
             memoryCallExpectation.fulfill()
             return []
         }
