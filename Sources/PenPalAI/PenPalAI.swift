@@ -40,23 +40,21 @@ public class PenPalAI {
         
         chat = chat.byAddingMessage(.user(message))
         
-        guard let newChat = try await gptConnector.chat(context: chat, onFunctionCall: self.handleFunction(name:arguments:)).first else {
-            throw PenPalError.chatGenerationFailed
-        }
+        let newChat = try await gptConnector.chat(context: chat, onToolCall: self.handleFunction(call:))
         
         currentChat = newChat
         
         return newChat.messages.last?.content ?? ""
     }
     
-    private func handleFunction(name: String, arguments: String) async throws -> String {
-        switch name {
+    private func handleFunction(call: ToolCall) async throws -> String {
+        switch call.function.name {
         case Constants.System.Functions.GetMemory.name:
-            return try await handleGetMemory(arguments: arguments)
+            return try await handleGetMemory(arguments: call.function.arguments)
         case Constants.System.Functions.SaveMemory.name:
-            return try await handleSaveMemory(arguments: arguments)
+            return try await handleSaveMemory(arguments:  call.function.arguments)
         case Constants.System.Functions.ReplaceMemory.name:
-            return try await handleReplaceMemory(arguments: arguments)
+            return try await handleReplaceMemory(arguments:  call.function.arguments)
         default:
             throw PenPalError.chatGenerationFailed
         }
@@ -110,54 +108,60 @@ public class PenPalAI {
     private func createNewChat() async throws -> Chat {
         Chat(
             messages: [.system("")],
-            functions: [
+            tools: [
                 .init(
-                    name: Constants.System.Functions.GetMemory.name,
-                    description: Constants.System.Functions.GetMemory.description,
-                    parameters: [
-                        .init(
-                            name: Constants.System.Functions.GetMemory.searchTextParameterName,
-                            type: .string,
-                            description: Constants.System.Functions.GetMemory.searchTextParameterDescription,
-                            required: true
-                        )
-                    ]
+                    function: .init(
+                        name: Constants.System.Functions.GetMemory.name,
+                        description: Constants.System.Functions.GetMemory.description,
+                        parameters: [
+                            .init(
+                                name: Constants.System.Functions.GetMemory.searchTextParameterName,
+                                type: .string,
+                                description: Constants.System.Functions.GetMemory.searchTextParameterDescription,
+                                required: true
+                            )
+                        ]
+                    )
                 ),
                 .init(
-                    name: Constants.System.Functions.SaveMemory.name,
-                    description: Constants.System.Functions.SaveMemory.description,
-                    parameters: [
-                        .init(
-                            name: Constants.System.Functions.SaveMemory.infoParameterName,
-                            type: .string,
-                            description: Constants.System.Functions.SaveMemory.infoParameterDescription,
-                            required: true
-                        ),
-                        .init(
-                            name: Constants.System.Functions.SaveMemory.isKeyParameterName,
-                            type: .boolean,
-                            description: Constants.System.Functions.SaveMemory.isKeyParameterDescription,
-                            required: true
-                        )
-                    ]
+                    function: .init(
+                        name: Constants.System.Functions.SaveMemory.name,
+                        description: Constants.System.Functions.SaveMemory.description,
+                        parameters: [
+                            .init(
+                                name: Constants.System.Functions.SaveMemory.infoParameterName,
+                                type: .string,
+                                description: Constants.System.Functions.SaveMemory.infoParameterDescription,
+                                required: true
+                            ),
+                            .init(
+                                name: Constants.System.Functions.SaveMemory.isKeyParameterName,
+                                type: .boolean,
+                                description: Constants.System.Functions.SaveMemory.isKeyParameterDescription,
+                                required: true
+                            )
+                        ]
+                    )
                 ),
                 .init(
-                    name: Constants.System.Functions.ReplaceMemory.name,
-                    description: Constants.System.Functions.ReplaceMemory.description,
-                    parameters: [
-                        .init(
-                            name: Constants.System.Functions.ReplaceMemory.oldInfoParameterName,
-                            type: .string,
-                            description: Constants.System.Functions.ReplaceMemory.oldInfoParameterDescription,
-                            required: true
-                        ),
-                        .init(
-                            name: Constants.System.Functions.ReplaceMemory.newInfoParameterName,
-                            type: .string,
-                            description: Constants.System.Functions.ReplaceMemory.newInfoParameterDescription,
-                            required: true
-                        )
-                    ]
+                    function: .init(
+                        name: Constants.System.Functions.ReplaceMemory.name,
+                        description: Constants.System.Functions.ReplaceMemory.description,
+                        parameters: [
+                            .init(
+                                name: Constants.System.Functions.ReplaceMemory.oldInfoParameterName,
+                                type: .string,
+                                description: Constants.System.Functions.ReplaceMemory.oldInfoParameterDescription,
+                                required: true
+                            ),
+                            .init(
+                                name: Constants.System.Functions.ReplaceMemory.newInfoParameterName,
+                                type: .string,
+                                description: Constants.System.Functions.ReplaceMemory.newInfoParameterDescription,
+                                required: true
+                            )
+                        ]
+                    )
                 )
             ]
         )

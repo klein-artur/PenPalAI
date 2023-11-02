@@ -14,8 +14,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/klein-artur/SwiftGPT",
       "state" : {
-        "revision" : "36956e19ff0e6846bfaa4f7071c7456afe07eb99",
-        "version" : "1.0.5"
+        "revision" : "cee5bd313b19e336eb3fc43792404503e60855e9",
+        "version" : "1.1.2"
       }
     }
   ],

@@ -9,18 +9,26 @@ import Foundation
 import GPTConnector
 
 class GPTConnectorMock: GPTConnector {
-    var chatCalledMock: ((Chat, (([Message], Chat) -> Message), ((String, String) async throws -> String)) async throws -> [Chat])?
-    
-    var apiKey: String?
-    
     func chat(
         context: Chat,
-        onChoiceSelect: @escaping (([Message], Chat) -> Message) = { (choices, _) in choices[0] },
-        onFunctionCall: @escaping ((String, String) async throws -> String) = { (_, _) in throw GPTConnectorError.noFunctionHandling }
-    ) async throws -> [Chat] {
+        onMessagesReceived: @escaping (([Message], Chat) -> Message), 
+        onToolCall: @escaping ((ToolCall) async throws -> String)) async throws -> Chat {
+            
         guard let chatCalledMock else {
             throw NSError()
         }
-        return try await chatCalledMock(context, onChoiceSelect, onFunctionCall)
+        return try await chatCalledMock(context, onMessagesReceived, onToolCall)
     }
+    
+    func chat(
+        context: Chat,
+        onMessagesReceived: @escaping (([Message], Chat) -> Message),
+        onFunctionCall: @escaping ((String, String) async throws -> String)) async throws -> Chat {
+            // do nothing.
+            return Chat(messages: [], tools: [])
+    }
+    
+    var chatCalledMock: ((Chat, (([Message], Chat) -> Message), ((ToolCall) async throws -> String)) async throws -> Chat)?
+    
+    var apiKey: String?
 }
